@@ -63,8 +63,9 @@ unsigned int save_stack_usage(void)
 {
     if (cfun)
     {
-        const char *name = IDENTIFIER_POINTER(DECL_NAME(cfun->decl));
-        callgraph.get_node(name)->stack_usage = cfun->machine->stack_usage;
+        const char *name = IDENTIFIER_POINTER (DECL_NAME (cfun->decl));
+        const char *filename = DECL_SOURCE_FILE (cfun->decl);
+        callgraph.get_node( filename, name)->stack_usage = cfun->machine->stack_usage;
     }
     return 0;
 }
@@ -77,16 +78,18 @@ void record_callgraph(void *gcc_data, void *user_data)
     FOR_EACH_FUNCTION(node_ptr)
     {
         const char *name = IDENTIFIER_POINTER(DECL_NAME(node_ptr->symbol.decl));
+        const char *filename = DECL_SOURCE_FILE (node_ptr->symbol.decl);
         
         if (!node_ptr->callers)
-            callgraph.add_root (name);
+            callgraph.add_root (filename, name);
         
         callees_ptr = node_ptr->callees;
         while (callees_ptr)
         {
             const char* callee_name =  IDENTIFIER_POINTER(DECL_NAME(callees_ptr->callee->symbol.decl));
+            const char* callee_filename = DECL_SOURCE_FILE(callees_ptr->callee->symbol.decl);
             
-            callgraph.add_child(name, callee_name);
+            callgraph.add_child(filename, name, callee_filename, callee_name);
             callees_ptr = callees_ptr->next_callee;
         }
     }

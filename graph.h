@@ -5,6 +5,7 @@
 
 struct node
 {
+    std::string filename;
     std::string name;
     std::vector<struct node*> children;
     unsigned int stack_usage;
@@ -13,47 +14,69 @@ struct node
 class graph
 {
     public:
-        bool exists(const std::string &name)
+        
+        bool exists(const std::string &filename, const std::string &name)
         {
-            return names_to_nodes.find(name) != names_to_nodes.end();
+            const std::string &key = make_key (filename, name);
+            return names_to_nodes.find(key) != names_to_nodes.end();
         }
         
-        void add_root(const std::string &name)
+        void add_root(const std::string &filename, const std::string &name)
         {
-            struct node child;
-            child.name = name;
-            child.stack_usage = 0;
-            names_to_nodes[name] = child;
-
-            roots.push_back(&names_to_nodes[name]);
+            struct node *child = new node();
+            child->filename = filename;
+            child->name = name;
+            child->stack_usage = 0;
+            add(child);
+            roots.push_back(child);
         }
         
-        struct node* get_node(const std::string &name)
+        struct node* get_node(const std::string &filename, const std::string &name)
         {
-            return &names_to_nodes[name];
+            return names_to_nodes[make_key (filename, name)];
         }
         
-        void add_child(const std::string &parent_name, const std::string &name)
+        void add_child(const std::string &parent_filename, const std::string &parent_name, const std::string &child_filename, const std::string &name)
         {
             struct node *child = NULL;
+            struct node *parent = NULL;
 
-            if (!exists (name))
+            if (!exists (child_filename, name))
             {
-                struct node temp;
-                temp.name = name;
-                temp.stack_usage = 0;
-                names_to_nodes[name] = temp;
+                struct node *temp = new node();
+                temp->filename = child_filename;
+                temp->name = name;
+                temp->stack_usage = 0;
+                add(temp);
             }
-            child = &names_to_nodes[name];
+            child = get_node (child_filename, name);
             
-            if (!exists (parent_name))
+            if (!exists (parent_filename, parent_name))
             {
-                struct node parent;
-                parent.name = parent_name;
-                names_to_nodes[parent_name] = parent;
+                struct node *parent = new node();
+                parent->filename = parent_filename;
+                parent->name = parent_name;
+                add(parent);
+            }
+            parent = get_node (parent_filename, parent_name);
+
+            std::vector<struct node*>::const_iterator iter = parent->children.begin();
+
+            bool parent_has_this_child = false;
+            
+            for (; iter != parent->children.end(); ++iter)
+            {
+                if (*iter == child)
+                {
+                    parent_has_this_child = true;
+                    break;
+                }
             }
             
-            names_to_nodes[parent_name].children.push_back(child);
+            if (!parent_has_this_child)
+            {
+                parent->children.push_back(child);
+            }
         }
         
         void print()
@@ -64,8 +87,10 @@ class graph
             {
                 print (*iter, 0, 0);
             }
-        }
 
+            std::cout << std::endl << std::endl;
+        }
+    private:
         void print(const struct node* n, unsigned int indent_level, unsigned int stack_usage)
         {
             for (unsigned int i = 0; i<indent_level; ++i)
@@ -73,7 +98,7 @@ class graph
                 std::cout << "  ";
             }
             
-            std::cout << n->name << " : " << n->stack_usage << " : " << n->stack_usage + stack_usage << std::endl;
+            std::cout << n->name << " (" << n->filename << ") " <<  " : " << n->stack_usage << " : " << n->stack_usage + stack_usage << std::endl;
             
             std::vector<struct node*>::const_iterator iter = n->children.begin();
             
@@ -83,7 +108,17 @@ class graph
             }
         }
         
+        void add (struct node *n)
+        {
+            names_to_nodes[make_key(n->filename, n->name)] = n;
+        }
+        
+        const std::string make_key (const std::string &filename, const std::string &name)
+        {
+            return filename + ":" + name;
+        }
+        
     private:
         std::vector<struct node*> roots;
-        std::map<std::string, struct node> names_to_nodes;
+        std::map<std::string, struct node *> names_to_nodes;
 };
