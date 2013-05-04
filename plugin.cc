@@ -1,14 +1,19 @@
-#include "gcc-plugin.h"
-#include <stdio.h>
-#include "cgraph.h"
-#include "tree.h"
-#include "tree-pass.h"
-#include "graph.h"
 
 void record_callgraph(void *gcc_data, void *user_data);
 unsigned int save_stack_usage (void);
 void dump_data (void *gcc, void *user_data);
 
+#include "gmp.h"
+#include <stdio.h>
+extern "C"
+{
+#include "gcc-plugin.h"
+#include "tree-pass.h"
+#include "cgraph.h"
+#include "tree.h"
+}
+
+#include "graph.h"
 graph callgraph;
 
 extern "C"
@@ -20,8 +25,7 @@ extern "C"
         {
             RTL_PASS,
             "read_stack_usage",				/* name */
-            OPTGROUP_NONE,                        /* optinfo_flags */
-            NULL,                                 /* gate */
+            NULL,                        /* optinfo_flags */
             save_stack_usage,			/* execute */
             NULL,                                 /* sub */
             NULL,                                 /* next */
@@ -75,10 +79,10 @@ void record_callgraph(void *gcc_data, void *user_data)
     cgraph_node_ptr node_ptr = NULL;
     struct cgraph_edge *callees_ptr = NULL;
     
-    FOR_EACH_FUNCTION(node_ptr)
+    FOR_EACH_FUNCTION_WITH_GIMPLE_BODY(node_ptr)
     {
-        const char *name = IDENTIFIER_POINTER(DECL_NAME(node_ptr->symbol.decl));
-        const char *filename = DECL_SOURCE_FILE (node_ptr->symbol.decl);
+        const char *name = IDENTIFIER_POINTER(DECL_NAME(node_ptr->decl));
+        const char *filename = DECL_SOURCE_FILE (node_ptr->decl);
         
         if (!node_ptr->callers)
             callgraph.add_root (filename, name);
@@ -86,8 +90,8 @@ void record_callgraph(void *gcc_data, void *user_data)
         callees_ptr = node_ptr->callees;
         while (callees_ptr)
         {
-            const char* callee_name =  IDENTIFIER_POINTER(DECL_NAME(callees_ptr->callee->symbol.decl));
-            const char* callee_filename = DECL_SOURCE_FILE(callees_ptr->callee->symbol.decl);
+            const char* callee_name =  IDENTIFIER_POINTER(DECL_NAME(callees_ptr->callee->decl));
+            const char* callee_filename = DECL_SOURCE_FILE(callees_ptr->callee->decl);
             
             callgraph.add_child(filename, name, callee_filename, callee_name);
             callees_ptr = callees_ptr->next_callee;
